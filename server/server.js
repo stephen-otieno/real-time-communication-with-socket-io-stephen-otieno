@@ -182,7 +182,6 @@ socket.on('add_reaction', async ({ messageId, reaction }) => {
       timestamp: new Date().toISOString(),
       isPrivate: true,
     };
-
     socket.to(to).emit('private_message', messageData);
     socket.emit('private_message', messageData);
   });
