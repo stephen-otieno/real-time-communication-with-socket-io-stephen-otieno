@@ -1,4 +1,4 @@
-// client/src/components/MessageReaction.jsx
+// client/src/components/MessageReaction.jsx (CORRECTED)
 
 import React, { useState } from 'react';
 import { useSocket } from '../socket/socket.js';
@@ -11,21 +11,24 @@ const availableReactions = {
 };
 
 function MessageReaction({ message, senderId }) {
-    const { sendReaction, socket } = useSocket();
+    // Destructure socket and users array from the hook
+    const { sendReaction, socket, users } = useSocket();
     const [showPicker, setShowPicker] = useState(false);
 
-    const currentUser = socket.id;
+    // FIX: Correctly determine the current user's username
+    const currentUsername = users.find(u => u.id === socket.id)?.username;
 
     // Determine if the current user has used this reaction
     const hasUserReacted = (reactionKey) => {
         const reactionData = message.reactions?.[reactionKey];
-        if (!reactionData) return false;
-        // In this simple setup, we check if the current user's username is in the list
-        const currentUsername = reactionData.users.find(u => u === message.sender); 
-        return reactionData.users.includes(message.sender); 
+        if (!reactionData || !currentUsername) return false;
+        
+        // Check if the current logged-in user's username is in the reaction list
+        return reactionData.users.includes(currentUsername); 
     };
 
     const handleReactionClick = (reactionKey) => {
+        // We only send the message ID and the reaction emoji
         sendReaction(message.id, reactionKey);
         setShowPicker(false);
     };

@@ -7,10 +7,9 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
 const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
 const messageRoutes = require('./routes/messageRoutes');
 const Message = require('./models/Message');
-
-
 
 // Load environment variables
 dotenv.config();
@@ -36,81 +35,86 @@ app.use(cors({ origin: CLIENT_URL }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ✅ Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+// Connect to MongoDB
+mongoose
+  .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log('✅ MongoDB connected'))
   .catch((err) => console.error('❌ MongoDB connection error:', err));
 
-// ✅ Import API routes
+// Import API routes
 const authRoutes = require('./api/auth');
 app.use('/api', authRoutes);
-
 app.use('/api/messages', messageRoutes);
 
-
-// --- In-memory chat data ---
-const users = {}; // Maps socket.id to { username, id }
-const messages = []; // Global message store (temporary)
+// In-memory structures
+const socketUsers = new Map(); // userId -> socket.id
+const users = {}; // socket.id -> { username, userId }
 const typingUsers = {};
 const AVAILABLE_ROOMS = ['General', 'Development', 'Random'];
 
-// --- Socket.io Events ---
-io.on('connection', (socket) => {
-  console.log(`User connected: ${socket.id}`);
-
-  io.use((socket, next) => {
+// --- SOCKET AUTHENTICATION MIDDLEWARE ---
+io.use((socket, next) => {
   const token = socket.handshake.auth?.token;
-  if (!token) {
-    return next(new Error("Authentication error: Token missing"));
-  }
+  if (!token) return next(new Error('Authentication error: Token missing'));
 
   try {
-    const decoded = require("jsonwebtoken").verify(token, process.env.JWT_SECRET);
-    socket.user = decoded; // Attach user info to socket
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    socket.user = {
+      id: decoded.id,
+      email: decoded.email,
+      username: decoded.username,
+    };// decoded should include _id or id
     next();
   } catch (err) {
-    console.error("Socket auth failed:", err.message);
-    next(new Error("Authentication error: Invalid token"));
+    console.error('Socket auth failed:', err.message);
+    next(new Error('Authentication error: Invalid token'));
   }
 });
 
-  socket.on('user_join', (username) => {
-    users[socket.id] = { username, id: socket.id };
-    io.emit('user_list', Object.values(users));
-    io.emit('user_joined', { username, id: socket.id });
-    console.log(`${username} joined the chat`);
+// --- SOCKET CONNECTION HANDLER ---
+io.on('connection', (socket) => {
+  console.log(`🟢 User connected: ${socket.id}`);
 
+  const userId = socket.user?._id || socket.user?.id;
+  if (userId) {
+    socketUsers.set(userId, socket.id);
+    io.emit('online_users', Array.from(socketUsers.keys())); // broadcast current online users
+  }
+
+  socket.on('user_join', (username) => {
+    if (!userId) return;
+    users[socket.id] = { username, userId };
+    io.emit('user_list', Object.values(users));
+    io.emit('user_joined', { username, userId });
+    console.log(`${username} joined the chat`);
     socket.emit('available_rooms', AVAILABLE_ROOMS);
     socket.emit('join_room', 'General');
   });
 
   socket.on('join_room', (roomName) => {
-    socket.rooms.forEach(room => {
+    socket.rooms.forEach((room) => {
       if (room !== socket.id && AVAILABLE_ROOMS.includes(room)) {
         socket.leave(room);
         const username = users[socket.id]?.username || 'A user';
         socket.to(room).emit('user_left_room', {
           username,
           roomName: room,
-          message: `${username} has left ${room}.`
+          message: `${username} has left ${room}.`,
         });
       }
     });
 
     if (AVAILABLE_ROOMS.includes(roomName)) {
       socket.join(roomName);
+      const username = users[socket.id]?.username || 'A user';
       socket.emit('room_joined', {
         roomName,
-        message: `Welcome to the ${roomName} channel!`
+        message: `Welcome to the ${roomName} channel!`,
       });
-      const username = users[socket.id]?.username || 'A user';
       socket.to(roomName).emit('user_joined_room', {
         username,
         roomName,
-        message: `${username} has joined ${roomName}.`
+        message: `${username} has joined ${roomName}.`,
       });
       console.log(`${username} joined room: ${roomName}`);
     }
@@ -125,15 +129,14 @@ io.on('connection', (socket) => {
 
     try {
       const newMessage = new Message({
-        senderId: socket.id,
-        sender: users[socket.id]?.username || 'Anonymous',
-        content: message,
-        room,
+        senderId: socket.user.id,
+        senderName: socket.user.username, // ✅ use username
+        content: messageData.message,
+        room: messageData.room,
       });
 
       await newMessage.save();
-
-      io.to(room).emit('receive_message', newMessage);
+      socket.to(room).emit('receive_message', newMessage);
       if (callback) callback({ status: 'ok', id: newMessage._id });
     } catch (err) {
       console.error('Error saving message:', err);
@@ -141,80 +144,77 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('add_reaction', async ({ messageId, reaction }) => {
+    try {
+      const senderUsername = users[socket.id]?.username || 'Anonymous';
+      const msg = await Message.findById(messageId);
+      if (!msg) return;
 
-socket.on('add_reaction', async ({ messageId, reaction }) => {
-  try {
-    const senderUsername = users[socket.id]?.username || 'Anonymous';
-    const msg = await Message.findById(messageId);
-    if (!msg) return;
+      if (!msg.reactions.has(reaction)) {
+        msg.reactions.set(reaction, { count: 0, users: [] });
+      }
 
-    if (!msg.reactions.has(reaction)) {
-      msg.reactions.set(reaction, { count: 0, users: [] });
+      const reactionData = msg.reactions.get(reaction);
+      const userIndex = reactionData.users.indexOf(senderUsername);
+
+      if (userIndex > -1) {
+        reactionData.users.splice(userIndex, 1);
+        reactionData.count--;
+      } else {
+        reactionData.users.push(senderUsername);
+        reactionData.count++;
+      }
+
+      if (reactionData.count === 0) msg.reactions.delete(reaction);
+      await msg.save();
+      io.to(msg.room).emit('message_updated', msg);
+    } catch (err) {
+      console.error('Error updating reaction:', err);
     }
-
-    const reactionData = msg.reactions.get(reaction);
-    const userIndex = reactionData.users.indexOf(senderUsername);
-
-    if (userIndex > -1) {
-      reactionData.users.splice(userIndex, 1);
-      reactionData.count--;
-    } else {
-      reactionData.users.push(senderUsername);
-      reactionData.count++;
-    }
-
-    if (reactionData.count === 0) msg.reactions.delete(reaction);
-    await msg.save();
-
-    io.to(msg.room).emit('message_updated', msg);
-  } catch (err) {
-    console.error('Error updating reaction:', err);
-  }
-});
-
+  });
 
   socket.on('private_message', ({ to, message }) => {
-    const messageData = {
+    const targetSocket = socketUsers.get(to);
+    const msg = {
       id: Date.now() + Math.random(),
       sender: users[socket.id]?.username || 'Anonymous',
-      senderId: socket.id,
+      senderId: userId,
       message,
       timestamp: new Date().toISOString(),
       isPrivate: true,
     };
-    socket.to(to).emit('private_message', messageData);
-    socket.emit('private_message', messageData);
+    if (targetSocket) io.to(targetSocket).emit('private_message', msg);
+    socket.emit('private_message', msg);
   });
 
   socket.on('typing', (isTyping) => {
-    if (users[socket.id]) {
-      const username = users[socket.id].username;
-      if (isTyping) typingUsers[socket.id] = username;
-      else delete typingUsers[socket.id];
-      socket.broadcast.emit('typing_users', Object.values(typingUsers));
-    }
+    const username = users[socket.id]?.username;
+    if (!username) return;
+    if (isTyping) typingUsers[socket.id] = username;
+    else delete typingUsers[socket.id];
+    socket.broadcast.emit('typing_users', Object.values(typingUsers));
   });
 
   socket.on('disconnect', () => {
-    if (users[socket.id]) {
-      const { username } = users[socket.id];
-      io.emit('user_left', { username, id: socket.id });
+    const username = users[socket.id]?.username;
+    if (username) {
+      io.emit('user_left', { username, userId });
       console.log(`${username} left the chat`);
     }
     delete users[socket.id];
     delete typingUsers[socket.id];
+    if (userId) socketUsers.delete(userId);
     io.emit('user_list', Object.values(users));
     io.emit('typing_users', Object.values(typingUsers));
+    io.emit('online_users', Array.from(socketUsers.keys()));
   });
 });
 
-// --- REST API Endpoints (for debugging) ---
-app.get('/api/messages', (req, res) => res.json(messages));
+// REST Endpoints
+app.get('/api/messages', (req, res) => res.json([]));
 app.get('/api/users', (req, res) => res.json(Object.values(users)));
 
-app.get('/', (req, res) => {
-  res.send('✅ Socket.io Chat Server with MongoDB Auth is running');
-});
+app.get('/', (req, res) => res.send('✅ Socket.io Chat Server with MongoDB Auth is running'));
 
 // Start the server
 const PORT = process.env.PORT || 5000;

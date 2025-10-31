@@ -41,7 +41,7 @@ function Register() {
 
       if (response.ok) {
         alert("Registration successful!");
-        navigate("/login");
+        navigate("/");
       } else {
         setError(data.msg || "Registration failed!");
       }
@@ -152,7 +152,7 @@ function Register() {
         <p className="text-sm text-center text-gray-600 mt-6">
           Already have an account?{" "}
           <Link
-            to="/login"
+            to="/"
             className="text-blue-600 font-medium hover:text-blue-700 transition"
           >
             Login

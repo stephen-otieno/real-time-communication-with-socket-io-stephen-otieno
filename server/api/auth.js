@@ -5,6 +5,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
+// REGISTER USER
 router.post("/register", async (req, res) => {
   try {
     const { username, email, password, confirmPassword } = req.body;
@@ -41,6 +42,7 @@ router.post("/register", async (req, res) => {
   }
 });
 
+// LOGIN USER
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -53,9 +55,12 @@ router.post("/login", async (req, res) => {
     if (!isMatch)
       return res.status(401).json({ msg: "Invalid email or password" });
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1d",
-    });
+    // ✅ Include username and email in token payload
+    const token = jwt.sign(
+      { id: user._id, username: user.username, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
 
     res.json({
       msg: "Login successful",
