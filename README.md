@@ -1,77 +1,184 @@
-# Real-Time Chat Application with Socket.io
+# Real-Time Chat Application 💬
 
-This assignment focuses on building a real-time chat application using Socket.io, implementing bidirectional communication between clients and server.
+A **real-time chat application** built with the **MERN Stack (MongoDB, Express, React, Node.js)** and **Socket.IO**.
+Users can join chat rooms, send and receive instant messages, and view live user status — all in real time.
 
-## Assignment Overview
+---
 
-You will build a chat application with the following features:
-1. Real-time messaging using Socket.io
-2. User authentication and presence
-3. Multiple chat rooms or private messaging
-4. Real-time notifications
-5. Advanced features like typing indicators and read receipts
+## 🖼️ Screenshots (Optional)
+### Login
+<img width="1039" height="810" alt="image" src="https://github.com/user-attachments/assets/7d2fa953-be61-4fa9-b7f6-1882a8007e0e" />
 
-## Project Structure
+### Cht & Reactions
+<img width="1127" height="797" alt="image" src="https://github.com/user-attachments/assets/13dab4fb-628a-4067-bc2b-adb57701885b" />
+
+<img width="1127" height="778" alt="image" src="https://github.com/user-attachments/assets/eee4824e-24b1-47d7-99e5-19a7dcb7eb11" />
+
+
+---
+
+
+## 🚀 Features
+
+* Real-time messaging using **Socket.IO**
+* User authentication with JWT
+* Multiple chat rooms support
+* Online/offline user status
+* Responsive UI (React + Tailwind CSS)
+* MongoDB backend for storing users and messages
+* REST API for user and message management
+
+---
+
+## 🧰 Tech Stack
+
+| Layer                | Technology            |
+| -------------------- | --------------------- |
+| **Frontend**         | React, Tailwind CSS   |
+| **Backend**          | Node.js, Express.js   |
+| **Database**         | MongoDB with Mongoose |
+| **Real-time Engine** | Socket.IO             |
+| **Authentication**   | JSON Web Token (JWT)  |
+
+---
+
+## 📁 Project Structure
 
 ```
-socketio-chat/
-├── client/                 # React front-end
-│   ├── public/             # Static files
-│   ├── src/                # React source code
-│   │   ├── components/     # UI components
-│   │   ├── context/        # React context providers
-│   │   ├── hooks/          # Custom React hooks
-│   │   ├── pages/          # Page components
-│   │   ├── socket/         # Socket.io client setup
-│   │   └── App.jsx         # Main application component
-│   └── package.json        # Client dependencies
-├── server/                 # Node.js back-end
-│   ├── config/             # Configuration files
-│   ├── controllers/        # Socket event handlers
-│   ├── models/             # Data models
-│   ├── socket/             # Socket.io server setup
-│   ├── utils/              # Utility functions
-│   ├── server.js           # Main server file
-│   └── package.json        # Server dependencies
-└── README.md               # Project documentation
+.
+├── client/                # React frontend
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── socket/
+│   │   └── App.jsx
+│   ├── package.json
+│   └── tailwind.config.js
+│
+├── server/                # Express backend
+│   ├── models/
+│   ├── routes/
+│   ├── server.js
+│   ├── package.json
+│   └── .env
+│
+└── README.md
 ```
 
-## Getting Started
+---
 
-1. Accept the GitHub Classroom assignment invitation
-2. Clone your personal repository that was created by GitHub Classroom
-3. Follow the setup instructions in the `Week5-Assignment.md` file
-4. Complete the tasks outlined in the assignment
+## ⚙️ Installation & Setup
 
-## Files Included
+### 1️⃣ Clone the Repository
 
-- `Week5-Assignment.md`: Detailed assignment instructions
-- Starter code for both client and server:
-  - Basic project structure
-  - Socket.io configuration templates
-  - Sample components for the chat interface
+```bash
+git clone https://github.com/PLP-MERN-Stack-Development/real-time-communication-with-socket-io-stephen-otieno.git
+cd real-time-communication-with-socket-io-stephen-otieno
+```
 
-## Requirements
+### 2️⃣ Install Backend Dependencies
 
-- Node.js (v18 or higher)
-- npm or yarn
-- Modern web browser
-- Basic understanding of React and Express
+```bash
+cd server
+npm install
+```
 
-## Submission
+### 3️⃣ Install Frontend Dependencies
 
-Your work will be automatically submitted when you push to your GitHub Classroom repository. Make sure to:
+```bash
+cd ../client
+npm install
+```
 
-1. Complete both the client and server portions of the application
-2. Implement the core chat functionality
-3. Add at least 3 advanced features
-4. Document your setup process and features in the README.md
-5. Include screenshots or GIFs of your working application
-6. Optional: Deploy your application and add the URLs to your README.md
+### 4️⃣ Create an `.env` File in `/server`
 
-## Resources
+```bash
+PORT=5000
+MONGO_URI=your_mongodb_connection_string
+JWT_SECRET=your_secret_key
+```
 
-- [Socket.io Documentation](https://socket.io/docs/v4/)
-- [React Documentation](https://react.dev/)
-- [Express.js Documentation](https://expressjs.com/)
-- [Building a Chat Application with Socket.io](https://socket.io/get-started/chat) 
+### 5️⃣ Run the Application
+
+**Run Backend:**
+
+```bash
+cd server
+npm run dev
+```
+
+**Run Frontend:**
+
+```bash
+cd ../client
+npm run dev
+```
+
+Frontend runs on `http://localhost:5173` (Vite default).
+Backend runs on `http://localhost:5000`.
+
+---
+
+## 🔄 Real-Time Communication Flow
+
+1. A user connects → Socket.IO establishes a WebSocket connection.
+2. The server listens for `joinRoom`, `message`, `typing`, and `disconnect` events.
+3. Messages are broadcast in real time to all users in the same room.
+4. Data is stored in MongoDB for persistence.
+
+---
+
+## 🧪 Example Environment Setup
+
+```
+# Example .env
+PORT=5000
+MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/chatapp
+JWT_SECRET=supersecretkey
+```
+
+---
+
+## 🧱 API Endpoints (Backend)
+
+| Method | Endpoint                | Description               |
+| ------ | ----------------------- | ------------------------- |
+| `POST` | `/api/auth/register`    | Register new user         |
+| `POST` | `/api/auth/login`       | Authenticate user         |
+| `GET`  | `/api/messages/:roomId` | Fetch messages for a room |
+
+---
+
+## 🧩 Socket.IO Events
+
+| Event        | Direction       | Description               |
+| ------------ | --------------- | ------------------------- |
+| `connection` | Server → Client | When a user connects      |
+| `joinRoom`   | Client → Server | Join a specific chat room |
+| `message`    | Both            | Send/receive messages     |
+| `typing`     | Client → Server | Notify typing status      |
+| `disconnect` | Server → All    | User leaves chat          |
+
+---
+
+
+##  Deployment
+
+You can deploy easily using:
+
+* **Frontend:** Vercel / Netlify
+* **Backend:** Render / Railway / Heroku
+* **Database:** MongoDB Atlas
+
+---
+
+
+### This app demonstrates:
+
+* Real-time web communication via **Socket.IO**
+* A full-stack MERN architecture
+* Secure user authentication
+* Scalable event-driven design
+
+
+
