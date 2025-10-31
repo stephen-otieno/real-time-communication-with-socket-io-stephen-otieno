@@ -18,7 +18,6 @@ function Login({ setLoggedIn }) {
     }
 
     try {
-      // Send login credentials to backend
       const response = await fetch("http://localhost:5000/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -29,25 +28,16 @@ function Login({ setLoggedIn }) {
       console.log("Login Response:", data);
 
       if (response.ok) {
-        // Store token and user info locally
+        // ✅ Store the full user object with username, email, and id
         if (data.token) localStorage.setItem("token", data.token);
-        if (data.username || data.email) {
-          localStorage.setItem(
-            "user",
-            JSON.stringify({
-              username: data.username || "",
-              email: data.email,
-            })
-          );
+
+        if (data.user) {
+          localStorage.setItem("user", JSON.stringify(data.user));
+          // ✅ Connect socket with username, not email
+          connect(data.user.username);
         }
 
-        // Connect socket using token (if available)
-        connect(data.username || email);
-
-        // Mark as logged in
         setLoggedIn(true);
-
-        // Redirect to chat
         navigate("/chat");
       } else {
         setError(data.message || "Invalid email or password");

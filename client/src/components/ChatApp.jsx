@@ -104,7 +104,8 @@ function ChatApp() {
         }
 
         const content = msg.message || msg.content;
-        const senderDisplay = isOwnMessage ? 'You' : msg.sender;
+        const senderDisplay = isOwnMessage ? 'You' : msg.senderName || msg.sender || msg.username || msg.email;
+
         
         return (
             <div key={msg.id} className={`${msgClasses} ${alignment}`}>
