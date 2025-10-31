@@ -1,0 +1,7 @@
+/* client/src/index.css */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* You can keep your custom styles here if needed, but Tailwind is ready to use! */
